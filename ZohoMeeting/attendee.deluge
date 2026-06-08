@@ -1,0 +1,12 @@
+webinarKey = "";
+param = Map();
+param.put("index",1);
+param.put("count",2);
+res = invokeurl
+[
+	url :"https://meeting.zoho.com/api/v2/{orgID}/attendee/" + webinarKey + ".json"
+	type :GET
+	parameters:param
+	connection:""
+];
+info res;
