@@ -1,0 +1,96 @@
+approve_shares = 0.0;
+	reject_shares = 0.0;
+	abstain_shares = 0.0;
+	represented_shares = 0.0;
+	total_votes = 0;
+	Resolution_Number = "";
+	resolution_map = Map();
+	for each res_Info in Resolution_Voting_Form
+	{
+		resolution_no = res_Info.Poll;
+		shareholder_info = Shareholders[Shareholder_Name == res_Info.Attendee_Name];
+		if(shareholder_info.count() == 0)
+		{
+			continue;
+		}
+		total_shares  = shareholder_info.Total_Capital_Injected;
+		eligible      = true;
+		// STEP 3: Eligibility rules
+		if(resolution_no.contains(":3") && shareholder_info.Is_Board_Member == "Yes")
+		{
+			eligible = false;
+		}
+		if(resolution_no.contains(":4") && shareholder_info.Is_Related_Party == "Yes")
+		{
+			eligible = false;
+		}
+		if(resolution_no.contains(":5") && shareholder_info.Is_Audit_Committee_Member == "Yes")
+		{
+			eligible = false;
+		}
+		if(resolution_no.contains(":6") && shareholder_info.Is_Nomination_Remuneration_Member == "Yes")
+		{
+			eligible = false;
+		}
+		if(eligible == false)
+		{
+			continue;
+		}
+		// STEP 4: Get or create the bucket for this resolution
+		if(resolution_map.contains(resolution_no) == false)
+		{
+			resolution_map.put(resolution_no, { 
+				approve_shares:      0.0,
+				reject_shares:       0.0,
+				abstain_shares:      0.0,
+				represented_shares:  0.0,
+				Resolution_Number:  resolution_no
+			});
+		}
+		bucket = resolution_map.get(resolution_no);
+		approve_val   = ifnull(bucket.get("approve"),0.0);
+		reject_val    = ifnull(bucket.get("reject"),0.0);
+		abstain_val   = ifnull(bucket.get("abstain"),0.0);
+		represented_val = ifnull(bucket.get("represented"),0.0);
+		represented_val = ifnull(represented_val,0.0) + ifnull(total_shares,0.0);
+		if(res_Info.Answer == "موافق")
+		{
+			approve_val = approve_val + total_shares;
+		}
+		else if(res_Info.Answer == "غير موافق")
+		{
+			reject_val = reject_val + total_shares;
+		}
+		else if(res_Info.Answer == "ممتنع")
+		{
+			abstain_val = abstain_val + total_shares;
+		}
+         // rebuild map properly
+			updated_bucket = Map();
+			updated_bucket.put("webinarKey", res_Info.webinarKey);
+			updated_bucket.put("approve_shares", approve_val);
+			updated_bucket.put("reject_shares", reject_val);
+			updated_bucket.put("abstain_shares", abstain_val);
+			updated_bucket.put("represented_shares", represented_val);
+			updated_bucket.put("Resolution_Number", resolution_no);
+
+			// IMPORTANT: put back into main map
+			resolution_map.put(resolution_no, updated_bucket);
+	}
+	// STEP 6: Insert ONE record per resolution — outside the loop
+		for each entry in resolution_map
+		{
+// 			bucket = resolution_map.get(resolution_no);
+			webinarKey         = entry.get("webinarKey");
+			Approve_Shares     = entry.get("approve_shares");
+			reject_shares     = entry.get("reject_shares");
+			abstain_shares     = entry.get("abstain_shares");
+			resolution_number     = entry.get("Resolution_Number");
+			info "Resolution Number: "+resolution_number;
+// 			insert into Resolution_Voting_Results
+// 			[
+// 				Resolution_Name    = resolution_no
+// 				Abstain_Shares     = bucket.get("abstain")
+// 				Represented_Shares = bucket.get("represented")
+// 			];
+		}
